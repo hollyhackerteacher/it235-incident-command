@@ -86,3 +86,21 @@ instructorShell=function(body){
   return html;
 };
 if(facilitatorMode&&!summaryMode)render();
+
+// Handle phase release before the legacy click listener so failures are visible
+// and the student view advances only after the server confirms the change.
+document.addEventListener('click',e=>{
+  const release=e.target.closest('[data-release-phase]');
+  if(!release||!facilitatorMode)return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  const nextPhase=Number(release.dataset.releasePhase);
+  const pin=String(document.querySelector('#facilitatorPin')?.value||sessionStorage.getItem('it235-facilitatorPin')||'').trim();
+  if(!pin){showToast('Enter the facilitator PIN before releasing a phase.');return}
+  postResponse({action:'setPhase',phase:nextPhase,pin}).then(result=>{
+    if(!result.ok){showToast(result.error||'The phase could not be released.');return}
+    state.globalPhase=Number(result.currentPhase||nextPhase);
+    showToast(`Released: ${phases[state.globalPhase-1]}`);
+    setTimeout(sync,200);
+  }).catch(()=>showToast('The server did not confirm the phase release.'));
+},true);
