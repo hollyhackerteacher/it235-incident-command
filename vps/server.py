@@ -128,6 +128,8 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/state":
             return self.send_json(public_state())
         relative = "index.html" if path in ("", "/") else path.lstrip("/")
+        if relative == "vps" or relative.startswith("vps/") or relative == "data" or relative.startswith("data/"):
+            return self.send_error(HTTPStatus.NOT_FOUND)
         target = (ROOT / relative).resolve()
         if ROOT not in target.parents and target != ROOT or not target.is_file():
             return self.send_error(HTTPStatus.NOT_FOUND)
