@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="IT235 Incident Command: a collaborative troubleshooting simulation." />
+    <title>Incident Command | IT235</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">IC</span><span>IT235 <b>Incident Command</b></span></div>
+      <div class="topbar-right"><span class="live-dot"></span><span>Live classroom simulation</span><button class="ghost-btn" id="resetBtn">Reset demo</button></div>
+    </header>
+    <main class="shell">
+      <section class="hero"><div class="eyebrow">Scenario 01 · The Monday Morning Outage</div><h1>Keep the business moving.</h1><p class="hero-copy">You are the incident response team for Northstar Services. The information is incomplete, the clock is running, and your job is to ask better questions before making a change.</p><div class="hero-meta"><span>⏱ 60 minutes</span><span>◉ Team-based</span><span>◆ Evidence-driven</span></div></section>
+      <section class="incident-card"><div class="incident-label"><span class="status-dot"></span> ACTIVE INCIDENT</div><div class="incident-grid"><div><h2>Customer portal unavailable</h2><p>At 8:42 AM, customer service reported that customers cannot reach the portal. Several employees also cannot access internal tools. The CEO wants an update in 15 minutes.</p></div><div class="impact"><span class="impact-label">Business impact</span><strong>$600 / minute</strong><span>Revenue and customer trust at risk</span></div></div></section>
+      <section class="workspace"><aside class="sidebar"><div class="team-box"><label for="teamName">Your team</label><input id="teamName" placeholder="Enter team name" maxlength="28" /><div class="team-saved" id="teamSaved">Not saved yet</div></div><nav class="phase-nav" aria-label="Incident phases"><button class="phase-link active" data-phase="1"><span>01</span><div><b>Triage</b><small>Define the problem</small></div></button><button class="phase-link" data-phase="2"><span>02</span><div><b>Evidence</b><small>Test your thinking</small></div></button><button class="phase-link" data-phase="3"><span>03</span><div><b>Response</b><small>Choose an action</small></div></button><button class="phase-link" data-phase="4"><span>04</span><div><b>Debrief</b><small>Communicate clearly</small></div></button></nav><div class="score-preview"><div><span>Team score</span><strong id="scoreTotal">0</strong><span>/ 100</span></div><div class="score-bar"><i id="scoreBar"></i></div><small>Process matters more than guessing.</small></div></aside><section class="content" id="content"></section></section>
+    </main>
+    <div class="toast" id="toast" role="status"></div><script src="app.js"></script>
+  </body>
+</html>
