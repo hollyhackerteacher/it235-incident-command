@@ -59,11 +59,20 @@ def public_state():
         released = conn.execute("SELECT evidence_id FROM evidence_requests WHERE status='released' GROUP BY evidence_id").fetchall()
         requests = conn.execute("SELECT * FROM evidence_requests ORDER BY requested_at DESC LIMIT 40").fetchall()
         scores = conn.execute("SELECT team_id, SUM(points) total FROM scores GROUP BY team_id").fetchall()
+        latest_rows = conn.execute("""SELECT s.* FROM submissions s
+          INNER JOIN (SELECT team_id, MAX(id) AS latest_id FROM submissions GROUP BY team_id) x
+          ON s.id=x.latest_id""").fetchall()
     released_ids = {r["evidence_id"] for r in released}
     score_map = {r["team_id"]: int(r["total"] or 0) for r in scores}
+    latest_map = {}
+    for r in latest_rows:
+        try:
+            latest_map[r["team_id"]] = {"phase": int(r["phase"]), "kind": r["kind"], "answer": json.loads(r["answer"]), "submittedAt": r["submitted_at"]}
+        except (TypeError, json.JSONDecodeError):
+            latest_map[r["team_id"]] = {"phase": int(r["phase"]), "kind": r["kind"], "answer": {}, "submittedAt": r["submitted_at"]}
     evidence = [e for e in src["evidence"] if e["id"] in released_ids]
     phase = int(control["current_phase"])
-    return {"ok": True, "currentPhase": phase, "incident": {"name": src["name"], "organization": src["organization"], "severity": src["severity"], "businessImpact": src["businessImpact"], "update": src["phaseUpdates"][str(phase)]}, "releasedEvidence": evidence, "requests": [{"teamName": r["team_name"], "evidenceId": r["evidence_id"], "question": r["question"], "reason": r["reason"], "status": r["status"]} for r in requests], "teams": [{"teamId": r["team_id"], "teamName": r["team_name"], "members": r["members"], "ready": bool(r["ready"]), "phase": int(r["phase"]), "score": score_map.get(r["team_id"], 0), "board": {"known": r["known"], "think": r["think"], "unknown": r["unknown"], "ruledOut": r["ruled_out"]}} for r in teams]}
+    return {"ok": True, "currentPhase": phase, "incident": {"name": src["name"], "organization": src["organization"], "severity": src["severity"], "businessImpact": src["businessImpact"], "update": src["phaseUpdates"][str(phase)]}, "releasedEvidence": evidence, "requests": [{"teamName": r["team_name"], "evidenceId": r["evidence_id"], "question": r["question"], "reason": r["reason"], "status": r["status"]} for r in requests], "teams": [{"teamId": r["team_id"], "teamName": r["team_name"], "members": r["members"], "ready": bool(r["ready"]), "phase": int(r["phase"]), "score": score_map.get(r["team_id"], 0), "board": {"known": r["known"], "think": r["think"], "unknown": r["unknown"], "ruledOut": r["ruled_out"]}, "latest": latest_map.get(r["team_id"], {})} for r in teams]}
 
 
 def action(payload):
