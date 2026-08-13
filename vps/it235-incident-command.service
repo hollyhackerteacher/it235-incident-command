@@ -1,0 +1,23 @@
+[Unit]
+Description=IT235 Incident Command classroom game
+After=network.target
+
+[Service]
+Type=simple
+User=skippy
+Group=skippy
+WorkingDirectory=/opt/it235-incident-command
+Environment=IT235_STATIC_ROOT=/opt/it235-incident-command
+Environment=IT235_DATA_DIR=/opt/it235-incident-command/data
+Environment=IT235_PORT=8096
+EnvironmentFile=-/opt/it235-incident-command/.env
+ExecStart=/usr/bin/python3 /opt/it235-incident-command/vps/server.py
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
