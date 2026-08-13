@@ -7,7 +7,7 @@
     "1": "At 8:42 AM, customers began reporting that the portal would not load. Several employees also report trouble reaching internal tools.",
     "2": "The incident team is collecting information. Reports are incomplete and the initial scope is not yet confirmed.",
     "3": "New reports show that email and the public status page are working, while the portal and one internal tool remain unreliable.",
-    "4": "A recent configuration change is associated with the timing, but another affected department reports the same symptom from a different network.",
+    "4": "A new report changes the picture: the shared gateway hosts received a Windows quality update shortly before the incident, and failures appear on requests handled by updated hosts. The evidence is not yet enough to declare the update the cause.",
     "5": "A first recovery attempt improves access for some users but does not restore the portal for everyone. Verification is now required.",
     "6": "Leadership wants a concise status update: impact, current action, confidence, and next checkpoint.",
     "7": "The incident is ready for an after-action review. Compare what teams believed with what the evidence ultimately established."
