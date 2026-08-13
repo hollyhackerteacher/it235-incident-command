@@ -1,0 +1,35 @@
+{
+  "name": "The Monday Morning Customer Portal Incident",
+  "organization": "Northstar Services",
+  "severity": "SEV-2 · Major service degradation",
+  "businessImpact": "$600 per minute in customer support and delayed transactions",
+  "phaseUpdates": {
+    "1": "At 8:42 AM, customers began reporting that the portal would not load. Several employees also report trouble reaching internal tools.",
+    "2": "The incident team is collecting information. Reports are incomplete and the initial scope is not yet confirmed.",
+    "3": "New reports show that email and the public status page are working, while the portal and one internal tool remain unreliable.",
+    "4": "A recent configuration change is associated with the timing, but another affected department reports the same symptom from a different network.",
+    "5": "A first recovery attempt improves access for some users but does not restore the portal for everyone. Verification is now required.",
+    "6": "Leadership wants a concise status update: impact, current action, confidence, and next checkpoint.",
+    "7": "The incident is ready for an after-action review. Compare what teams believed with what the evidence ultimately established."
+  },
+  "evidence": [
+    {"id":"user-interview","title":"User interview","description":"A conversation with someone who experienced the incident firsthand.","content":"One customer service employee cannot load the portal from the office network. They can reach email and the public status page. A coworker in another department reports the same portal symptom.","releasePhase":2},
+    {"id":"service-desk","title":"Service desk tickets","description":"Recent internal reports grouped by symptom, time, and department.","content":"Tickets come from Customer Service, Finance, and one remote employee. All mention portal timeouts. One ticket says, 'the entire network is down,' but the user also confirms email is working.","releasePhase":2},
+    {"id":"monitoring","title":"Monitoring information","description":"Availability and latency signals for the portal and related services.","content":"The portal health check is green from the monitoring location, but transaction latency is elevated. Authentication, email, and the status page are healthy.","releasePhase":3},
+    {"id":"recent-change","title":"Recent change record","description":"A record of work completed shortly before the first report.","content":"A configuration change affecting a shared gateway was completed at 8:31 AM. The change passed a limited check from one location. It is a credible lead, not proof of cause.","releasePhase":4},
+    {"id":"logs","title":"Application and gateway logs","description":"Technical records showing requests, errors, and dependency behavior.","content":"Requests from several networks reach the gateway but fail during a dependency call. The error pattern began after the configuration change and is absent from unaffected services.","releasePhase":4},
+    {"id":"verification","title":"Recovery verification results","description":"Checks performed after the proposed recovery action.","content":"The portal loads for a test account from the office network, but a customer simulation still fails from a second network. The change is not yet verified for all affected users.","releasePhase":5}
+  ],
+  "timeline": [
+    "8:31 AM — Shared gateway configuration change completed.",
+    "8:42 AM — First customer portal report received.",
+    "8:47 AM — Internal reports begin arriving from multiple departments.",
+    "9:00 AM — Incident team begins investigation.",
+    "9:14 AM — Controlled rollback begins.",
+    "9:22 AM — Portal access improves but requires broader verification.",
+    "9:35 AM — Service restored and follow-up work begins."
+  ],
+  "rootCause": "A gateway configuration change altered how the portal reached a shared dependency. The limited post-change check did not exercise the affected request path from multiple networks.",
+  "verification": ["Portal loads for a representative internal user", "Customer simulation succeeds from another network", "Authentication and dependent services remain healthy", "Error and latency signals return to baseline", "Users confirm the original business task works"],
+  "learningObjectives": ["Separate user experience from technical diagnosis", "Request evidence for a specific question", "Revise a hypothesis when evidence changes", "Use risk, rollback, and verification before declaring recovery", "Communicate impact and confidence clearly" ]
+}
