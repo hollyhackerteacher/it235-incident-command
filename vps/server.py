@@ -13,7 +13,7 @@ DATA = Path(os.environ.get("IT235_DATA_DIR", ROOT / "data")).resolve()
 DB_PATH = Path(os.environ.get("IT235_DB", DATA / "it235.sqlite3")).resolve()
 SCENARIO_PATH = Path(os.environ.get("IT235_SCENARIO", ROOT / "vps" / "scenario.json")).resolve()
 PORT = int(os.environ.get("IT235_PORT", "8096"))
-FACILITATOR_PIN = os.environ.get("IT235_FACILITATOR_PIN", "235control")
+FACILITATOR_PIN = os.environ.get("IT235_FACILITATOR_PIN", "235")
 DATA.mkdir(parents=True, exist_ok=True)
 
 
@@ -100,6 +100,17 @@ def action(payload):
             conn.execute("UPDATE control SET current_phase=?, updated_at=? WHERE id=1", (phase, stamp))
             conn.execute("UPDATE teams SET ready=0, updated_at=? WHERE phase < ?", (stamp, phase))
             return {"ok": True, "currentPhase": phase}
+        if kind == "authenticate":
+            return {"ok": str(payload.get("pin", "")) == FACILITATOR_PIN}
+        if kind == "resetGame":
+            if str(payload.get("pin", "")) != FACILITATOR_PIN:
+                return {"ok": False, "error": "Invalid facilitator PIN"}
+            conn.execute("DELETE FROM submissions")
+            conn.execute("DELETE FROM evidence_requests")
+            conn.execute("DELETE FROM scores")
+            conn.execute("DELETE FROM teams")
+            conn.execute("UPDATE control SET current_phase=1, updated_at=? WHERE id=1", (stamp,))
+            return {"ok": True, "currentPhase": 1}
         if kind == "releaseEvidence":
             if str(payload.get("pin", "")) != FACILITATOR_PIN:
                 return {"ok": False, "error": "Invalid facilitator PIN"}
