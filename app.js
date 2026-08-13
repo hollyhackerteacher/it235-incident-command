@@ -32,3 +32,4 @@ function renderSummary(){document.body.classList.add('screen-mode');document.que
 document.addEventListener('click',e=>{if(e.target.closest('[data-edit-response]')){state.waitingPhase=0;localStorage.removeItem('it235-waitingPhase');render()}});
 if(summaryMode){renderFacilitator=renderSummary;render()}
 const stableRender=render;render=function(){if(!facilitatorMode&&state.started&&document.querySelector('textarea'))saveFields();stableRender()};
+const liveGetState=getState;let firstStudentSync=true;getState=function(done){if(!facilitatorMode&&!firstStudentSync&&!state.waitingPhase)return;firstStudentSync=false;liveGetState(done)};
