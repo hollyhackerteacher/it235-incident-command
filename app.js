@@ -74,3 +74,15 @@ if(facilitatorMode&&!summaryMode){
   };
   render();
 }
+
+// Keep the pre-start lobby focused on team sign-in. Review, submissions, and
+// scoring controls become available once the instructor starts the activity.
+const fullInstructorShell=instructorShell;
+instructorShell=function(body){
+  const html=fullInstructorShell(body);
+  if(instructorPage===1&&!state.activityStarted){
+    return html.replace(/<nav class="instructor-page-nav"[\s\S]*?<\/nav>/,'').replace(/<div class="instructor-page-footer">[\s\S]*?<\/div>\s*$/,'');
+  }
+  return html;
+};
+if(facilitatorMode&&!summaryMode)render();
