@@ -1,5 +1,7 @@
 # IT235 Incident Command
 
+Deployment is managed through GitHub Pages.
+
 An online, platform-agnostic troubleshooting simulation for a 60-minute classroom session.
 
 ## Current version
