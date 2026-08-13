@@ -1,4 +1,4 @@
-const BACKEND_URL='https://script.google.com/macros/s/AKfycbxeSEmJ12nWv_Jir6oDXlNGOgIRdXLxd64UcfzJrkM4PZokK3mqNzqpebN3gncRuLsU6w/exec';
+const BACKEND_URL='https://script.google.com/macros/s/AKfycbz_tLTmz_HkZqQQsUJ-Gb_2_drJ3jENFPMpzJokSNIp1u6x1NDPHEpP-iWtbUSIZpdtcA/exec';
 const facilitatorMode=new URLSearchParams(location.search).get('mode')==='facilitator';
 const state={phase:Number(localStorage.getItem('it235-phase')||1),team:localStorage.getItem('it235-team')||'',members:localStorage.getItem('it235-members')||'',teamId:localStorage.getItem('it235-teamId')||'',started:localStorage.getItem('it235-started')==='true',startedAt:Number(localStorage.getItem('it235-startedAt')||0),score:Number(localStorage.getItem('it235-score')||0),answers:JSON.parse(localStorage.getItem('it235-answers')||'{}'),globalPhase:1,teams:[]};
 const content=document.querySelector('#content');
