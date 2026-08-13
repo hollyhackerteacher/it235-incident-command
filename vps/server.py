@@ -35,7 +35,7 @@ def db():
 def init_db():
     with db() as conn:
         conn.executescript("""
-        CREATE TABLE IF NOT EXISTS control (id INTEGER PRIMARY KEY CHECK (id = 1), current_phase INTEGER NOT NULL, updated_at TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS control (id INTEGER PRIMARY KEY CHECK (id = 1), current_phase INTEGER NOT NULL, started INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL);
         INSERT OR IGNORE INTO control (id, current_phase, updated_at) VALUES (1, 1, CURRENT_TIMESTAMP);
         CREATE TABLE IF NOT EXISTS teams (team_id TEXT PRIMARY KEY, team_name TEXT NOT NULL, members TEXT NOT NULL, registered_at TEXT NOT NULL, ready INTEGER NOT NULL DEFAULT 0, phase INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL, known TEXT NOT NULL DEFAULT '', think TEXT NOT NULL DEFAULT '', unknown TEXT NOT NULL DEFAULT '', ruled_out TEXT NOT NULL DEFAULT '');
         CREATE TABLE IF NOT EXISTS submissions (id INTEGER PRIMARY KEY AUTOINCREMENT, team_id TEXT NOT NULL, team_name TEXT NOT NULL, phase INTEGER NOT NULL, kind TEXT NOT NULL DEFAULT 'decision', answer TEXT NOT NULL, submitted_at TEXT NOT NULL, points INTEGER NOT NULL DEFAULT 0, feedback TEXT NOT NULL DEFAULT '');
@@ -46,6 +46,9 @@ def init_db():
         for name in ("known", "think", "unknown", "ruled_out"):
             if name not in columns:
                 conn.execute(f"ALTER TABLE teams ADD COLUMN {name} TEXT NOT NULL DEFAULT ''")
+        control_columns = {r[1] for r in conn.execute("PRAGMA table_info(control)")}
+        if "started" not in control_columns:
+            conn.execute("ALTER TABLE control ADD COLUMN started INTEGER NOT NULL DEFAULT 0")
         columns = {r[1] for r in conn.execute("PRAGMA table_info(submissions)")}
         if "kind" not in columns:
             conn.execute("ALTER TABLE submissions ADD COLUMN kind TEXT NOT NULL DEFAULT 'decision'")
@@ -54,7 +57,7 @@ def init_db():
 def public_state():
     src = scenario()
     with db() as conn:
-        control = conn.execute("SELECT current_phase FROM control WHERE id=1").fetchone()
+        control = conn.execute("SELECT current_phase, started FROM control WHERE id=1").fetchone()
         teams = conn.execute("SELECT * FROM teams ORDER BY registered_at").fetchall()
         released = conn.execute("SELECT evidence_id FROM evidence_requests WHERE status='released' GROUP BY evidence_id").fetchall()
         requests = conn.execute("SELECT * FROM evidence_requests ORDER BY requested_at DESC LIMIT 40").fetchall()
@@ -72,7 +75,7 @@ def public_state():
             latest_map[r["team_id"]] = {"phase": int(r["phase"]), "kind": r["kind"], "answer": {}, "submittedAt": r["submitted_at"]}
     evidence = [e for e in src["evidence"] if e["id"] in released_ids]
     phase = int(control["current_phase"])
-    return {"ok": True, "currentPhase": phase, "incident": {"name": src["name"], "organization": src["organization"], "severity": src["severity"], "businessImpact": src["businessImpact"], "update": src["phaseUpdates"][str(phase)]}, "releasedEvidence": evidence, "requests": [{"teamName": r["team_name"], "evidenceId": r["evidence_id"], "question": r["question"], "reason": r["reason"], "status": r["status"]} for r in requests], "teams": [{"teamId": r["team_id"], "teamName": r["team_name"], "members": r["members"], "ready": bool(r["ready"]), "phase": int(r["phase"]), "score": score_map.get(r["team_id"], 0), "board": {"known": r["known"], "think": r["think"], "unknown": r["unknown"], "ruledOut": r["ruled_out"]}, "latest": latest_map.get(r["team_id"], {})} for r in teams]}
+    return {"ok": True, "activityStarted": bool(control["started"]), "currentPhase": phase, "incident": {"name": src["name"], "organization": src["organization"], "severity": src["severity"], "businessImpact": src["businessImpact"], "update": src["phaseUpdates"][str(phase)]}, "releasedEvidence": evidence, "requests": [{"teamName": r["team_name"], "evidenceId": r["evidence_id"], "question": r["question"], "reason": r["reason"], "status": r["status"]} for r in requests], "teams": [{"teamId": r["team_id"], "teamName": r["team_name"], "members": r["members"], "ready": bool(r["ready"]), "phase": int(r["phase"]), "score": score_map.get(r["team_id"], 0), "board": {"known": r["known"], "think": r["think"], "unknown": r["unknown"], "ruledOut": r["ruled_out"]}, "latest": latest_map.get(r["team_id"], {})} for r in teams]}
 
 
 def action(payload):
@@ -102,6 +105,11 @@ def action(payload):
             return {"ok": True, "currentPhase": phase}
         if kind == "authenticate":
             return {"ok": str(payload.get("pin", "")) == FACILITATOR_PIN}
+        if kind == "startGame":
+            if str(payload.get("pin", "")) != FACILITATOR_PIN:
+                return {"ok": False, "error": "Invalid facilitator PIN"}
+            conn.execute("UPDATE control SET current_phase=1, started=1, updated_at=? WHERE id=1", (stamp,))
+            return {"ok": True, "activityStarted": True, "currentPhase": 1}
         if kind == "resetGame":
             if str(payload.get("pin", "")) != FACILITATOR_PIN:
                 return {"ok": False, "error": "Invalid facilitator PIN"}
@@ -109,7 +117,7 @@ def action(payload):
             conn.execute("DELETE FROM evidence_requests")
             conn.execute("DELETE FROM scores")
             conn.execute("DELETE FROM teams")
-            conn.execute("UPDATE control SET current_phase=1, updated_at=? WHERE id=1", (stamp,))
+            conn.execute("UPDATE control SET current_phase=1, started=0, updated_at=? WHERE id=1", (stamp,))
             return {"ok": True, "currentPhase": 1}
         if kind == "releaseEvidence":
             if str(payload.get("pin", "")) != FACILITATOR_PIN:
