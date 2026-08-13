@@ -58,4 +58,19 @@ pageNames[2]='Submissions';const originalInstructorPages=renderInstructorPages;r
 state.activityStarted=false;function instructorLobby(){const teams=state.teams.map(t=>`<article class="lobby-team"><div><span class="phase-kicker">Team connected</span><h3>${t.teamName}</h3><p>${t.members}</p></div><span class="status-pill">READY</span></article>`).join('');content.innerHTML=instructorShell(`<section class="lobby-hero"><div><div class="phase-kicker">Before the incident begins</div><h2>Get the class ready</h2><p class="subhead">Teams can enter their names and members now. The activity clock and student briefing will begin only when you start the activity.</p></div><div class="lobby-count"><strong>${state.teams.length}</strong><span>teams connected</span></div></section><section class="lobby-actions"><div><h3>${state.teams.length?'Teams are ready to go':'Waiting for teams to sign in'}</h3><p>${state.teams.length?'Confirm the team list, then start the shared activity.':'Leave this screen projected while teams register.'}</p></div><button class="primary-btn" data-start-activity ${state.teams.length?'':'disabled'}>Start activity</button></section><section class="lobby-team-grid">${teams||'<div class="summary-empty">No teams connected yet.</div>'}</section>`)}const pagedInstructorRender=renderInstructorPages;renderInstructorPages=function(){if(instructorPage===1&&!state.activityStarted){instructorLobby();return}pagedInstructorRender()};pageNames[0]='Get ready';
 const normalStudentRender=render;render=function(){if(!facilitatorMode&&state.started&&!state.activityStarted){document.body.classList.add('screen-mode');document.querySelector('.hero h1').textContent='Waiting for the instructor';document.querySelector('.hero-copy').textContent='Your team is registered. The instructor will start the shared activity when everyone is ready.';document.querySelector('.phase-nav').innerHTML='';content.innerHTML='<div class="waiting-state"><div class="waiting-orbit"><i></i><i></i><i></i></div><div class="phase-kicker">Team registered</div><h2>Get ready</h2><p class="subhead">The briefing will open when the instructor starts the activity. Keep your team together and be ready to discuss.</p></div>';return}normalStudentRender()};document.addEventListener('click',e=>{if(e.target.closest('[data-start-activity]')){const pin=sessionStorage.getItem('it235-facilitatorPin')||'';postResponse({action:'startGame',pin}).then(r=>{if(!r.ok){showToast('Start failed. Sign in again.');return}state.activityStarted=true;state.globalPhase=1;showToast('Activity started.');render()})}});
 setInterval(()=>{if(!state.activityStarted){const el=document.querySelector('#timerDisplay');if(el){el.textContent='08:00';el.classList.remove('urgent')}}},1000);
-if(facilitatorMode&&!summaryMode)render();
+// Keep the facilitator entry point deterministic: the initial instructor screen
+// is always the authenticated Get Ready lobby, never the legacy incident room.
+if(facilitatorMode&&!summaryMode){
+  renderFacilitator=function(){
+    if(!facilitatorUnlocked){
+      document.body.classList.add('screen-mode');
+      document.querySelector('.hero h1').textContent='Facilitator access';
+      document.querySelector('.hero-copy').textContent='Enter the facilitator PIN to open the control room.';
+      document.querySelector('.phase-nav').innerHTML='';
+      content.innerHTML='<div class="facilitator-login"><div class="phase-kicker">Instructor control room</div><h2>Enter facilitator PIN</h2><p class="subhead">The dashboard is hidden until you authenticate in this browser session.</p><label for="facilitatorLoginPin">Facilitator PIN</label><input id="facilitatorLoginPin" type="password" inputmode="numeric" autocomplete="new-password" placeholder="PIN"><button class="primary-btn" data-auth-facilitator>Open control room</button><p class="helper">You will not be asked again until this browser session is cleared.</p></div>';
+      return;
+    }
+    renderInstructorPages();
+  };
+  render();
+}
