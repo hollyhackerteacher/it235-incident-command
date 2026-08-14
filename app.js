@@ -171,7 +171,7 @@ const dialogueFields={
   6:[['leadershipUpdate','Leadership update'],['confidence','Confidence and rationale']],
   7:[['afterAction','What the team did well'],['assumption','Assumption to challenge'],['prevention','Recommended improvement']]
 };
-dialogueFields[2]=evidenceCatalog.flatMap(source=>[[`evidenceLearned-${source.id}`,`${source.title} — what we learned`],[`evidenceHypothesis-${source.id}`,`${source.title} — hypothesis or next question`]]);
+dialogueFields[2]=evidenceCatalog.map(source=>[`evidenceNote-${source.id}`,`${source.title} — team note`]);
 const dialogueReportLabels={boardKnown:'Known facts',boardThink:'Current thinking',boardUnknown:'Unknowns',boardRuledOut:'Ruled out'};
 function reportValue(value){return String(value||'').trim()||'Not provided'}
 function reportText(){
@@ -193,16 +193,20 @@ function renderReport(){document.body.classList.add('screen-mode');content.inner
 function evidenceScreen(){
   const source=evidenceCatalog[state.evidenceStep]||evidenceCatalog[0];
   const step=state.evidenceStep+1;
-  return `${progress(2)}<div class="evidence-dialogue"><div class="phase-kicker">Evidence ${step} of ${evidenceCatalog.length} · ${source.type}</div><h2>${escapeHtml(source.title)}</h2><p class="subhead">${escapeHtml(source.prompt)}</p><article class="evidence-source"><div class="source-label">Source material</div><div class="evidence-content">${escapeHtml(source.content)}</div></article>${field(`evidenceLearned-${source.id}`,'What did your team learn from this source?','Separate observations from assumptions. What does this source actually tell you?')}${field(`evidenceHypothesis-${source.id}`,'What does this make you hypothesize or ask next?','State what this supports, challenges, or leaves uncertain.')}${dialogueActionButtons('Save evidence response',state.evidenceStep===evidenceCatalog.length-1?'Continue to synthesis':'Next evidence source')}</div>`;
+  return `${progress(2)}<div class="evidence-dialogue"><div class="phase-kicker">Evidence ${step} of ${evidenceCatalog.length} · ${source.type}</div><h2>${escapeHtml(source.title)}</h2><p class="subhead">${escapeHtml(source.prompt)}</p>${runningNotebook()}<article class="evidence-source"><div class="source-label">Source material</div><div class="evidence-content">${escapeHtml(source.content)}</div></article>${field(`evidenceNote-${source.id}`,'Add one note to the running incident notebook','What matters here? Capture the clue, your interpretation, or the next question it creates.')}${dialogueActionButtons('Save notebook note',state.evidenceStep===evidenceCatalog.length-1?'Continue to synthesis':'Next evidence source')}</div>`;
+}
+function runningNotebook(){
+  const entries=evidenceCatalog.slice(0,state.evidenceStep).map(source=>`<article class="notebook-entry"><div><span class="notebook-source">${escapeHtml(source.title)}</span><span class="notebook-status">captured</span></div><p>${escapeHtml(reportValue(state.answers[`evidenceNote-${source.id}`]))}</p></article>`).join('');
+  return `<section class="running-notebook"><div class="board-heading"><div><span class="phase-kicker">Running incident notebook</span><h3>Clues gathered so far</h3></div><span class="helper">${state.evidenceStep} of ${evidenceCatalog.length} sources reviewed</span></div>${entries||'<p class="notebook-empty">Your notes will collect here as the evidence arrives.</p>'}</section>`;
 }
 function dialogueActionButtons(label,nextLabel){return `<div class="dialogue-actions"><button class="secondary-btn" data-dialogue-back>← Back</button><button class="primary-btn" data-evidence-next>${nextLabel||label} →</button></div><div class="rubric-note"><b>Evidence response:</b> Your team is graded on what you noticed, how carefully you interpreted it, and whether your next question follows from the source.</div>`}
 function validateEvidenceResponse(){
   const source=evidenceCatalog[state.evidenceStep];
-  const ids=[`evidenceLearned-${source.id}`,`evidenceHypothesis-${source.id}`];
+  const ids=[`evidenceNote-${source.id}`];
   const missing=ids.filter(id=>!String(document.querySelector(`#${id}`)?.value||'').trim());
   document.querySelectorAll('.invalid').forEach(x=>x.classList.remove('invalid'));
   missing.forEach(id=>document.querySelector(`#${id}`)?.classList.add('invalid'));
-  if(missing.length){showToast('Complete both evidence response fields before continuing.');document.querySelector(`#${missing[0]}`)?.focus();return false}
+  if(missing.length){showToast('Add a short note to the running notebook before continuing.');document.querySelector(`#${missing[0]}`)?.focus();return false}
   return true;
 }
 function backDialogue(){
