@@ -12,6 +12,8 @@ The current version is a self-hosted classroom game with a small VPS backend. It
 - Team name and answer persistence in the browser
 - Shared team registration and submissions through the VPS backend
 - Guided dialogue prompts that advance after each completed response
+- Evidence is presented as five separate source screens, each with a learning/hypothesis response
+- Back navigation allows teams to revisit earlier dialogue and evidence
 - A final team report that can be downloaded, printed, or copied for grading
 - Evidence selection, hypothesis writing, response planning, verification, and incident reporting
 - A 100-point process rubric: 15 + 25 + 25 + 35

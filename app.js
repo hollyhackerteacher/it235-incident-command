@@ -154,6 +154,14 @@ render();
 // Final student-only dialogue flow. Each completed prompt advances directly
 // to the next prompt; the final prompt becomes a portable grading report.
 state.completed=localStorage.getItem('it235-completed')==='1';
+state.evidenceStep=Number(localStorage.getItem('it235-evidenceStep')||0);
+const evidenceCatalog=[
+  {id:'user-interview',title:'User interview',type:'Phone call transcript',prompt:'Listen for the difference between what the user experienced and what they assumed.',content:'Caller: “The customer portal will not load from our office. Email is working, and I can reach the public status page. A coworker in another department is seeing the same portal problem.”'},
+  {id:'service-desk',title:'Service desk tickets',type:'Grouped incident tickets',prompt:'Look for patterns across people, departments, locations, and unaffected services.',content:'08:47 Customer Service: portal timeout. 08:51 Finance: portal timeout. 08:54 Remote employee: portal timeout. One ticket says “the entire network is down,” but the reporter confirms email is working.'},
+  {id:'monitoring',title:'Monitoring information',type:'Service dashboard snapshot',prompt:'Compare healthy signals with degraded signals instead of treating the whole environment as one system.',content:'Portal health check: GREEN from the monitoring location. Portal transaction latency: YELLOW and rising. Authentication: GREEN. Email: GREEN. Public status page: GREEN.'},
+  {id:'recent-change',title:'Recent change record',type:'Change-management entry',prompt:'Use timing as a lead to test, not as proof that the change caused the incident.',content:'08:12 Routine certificate renewal completed. 08:31 Shared gateway configuration change completed. 08:36 Monitoring thresholds adjusted. 08:42 First customer report. The gateway change received a limited post-change check from one location.'},
+  {id:'logs',title:'Application and gateway logs',type:'Log excerpt',prompt:'Find the repeated pattern, then decide what it supports and what it still does not prove.',content:'08:41:58 gateway route=portal upstream=dependency status=504 elapsed=30.02s\n08:42:11 gateway route=portal upstream=dependency status=504 elapsed=30.01s\n08:42:19 gateway route=portal upstream=dependency status=504 elapsed=30.03s\n08:42:22 gateway route=status-page status=200 elapsed=0.18s\n08:43:07 gateway route=portal upstream=dependency status=504 elapsed=30.02s\nPattern begins near the gateway configuration change; unaffected routes continue to return 200.'}
+];
 const dialogueFields={
   1:[['briefQuestions','First questions']],
   2:[['requestEvidence','Requested source'],['requestQuestion','Question behind the request'],['requestReason','Why this evidence matters'],['investigationDecision','Working hypothesis']],
@@ -163,6 +171,7 @@ const dialogueFields={
   6:[['leadershipUpdate','Leadership update'],['confidence','Confidence and rationale']],
   7:[['afterAction','What the team did well'],['assumption','Assumption to challenge'],['prevention','Recommended improvement']]
 };
+dialogueFields[2]=evidenceCatalog.flatMap(source=>[[`evidenceLearned-${source.id}`,`${source.title} — what we learned`],[`evidenceHypothesis-${source.id}`,`${source.title} — hypothesis or next question`]]);
 const dialogueReportLabels={boardKnown:'Known facts',boardThink:'Current thinking',boardUnknown:'Unknowns',boardRuledOut:'Ruled out'};
 function reportValue(value){return String(value||'').trim()||'Not provided'}
 function reportText(){
@@ -181,11 +190,34 @@ function reportHtml(){
 }
 function escapeHtml(value){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function renderReport(){document.body.classList.add('screen-mode');content.innerHTML=reportHtml();content.classList.remove('screen-enter');requestAnimationFrame(()=>content.classList.add('screen-enter'))}
+function evidenceScreen(){
+  const source=evidenceCatalog[state.evidenceStep]||evidenceCatalog[0];
+  const step=state.evidenceStep+1;
+  return `${progress(2)}<div class="evidence-dialogue"><div class="phase-kicker">Evidence ${step} of ${evidenceCatalog.length} · ${source.type}</div><h2>${escapeHtml(source.title)}</h2><p class="subhead">${escapeHtml(source.prompt)}</p><article class="evidence-source"><div class="source-label">Source material</div><div class="evidence-content">${escapeHtml(source.content)}</div></article>${field(`evidenceLearned-${source.id}`,'What did your team learn from this source?','Separate observations from assumptions. What does this source actually tell you?')}${field(`evidenceHypothesis-${source.id}`,'What does this make you hypothesize or ask next?','State what this supports, challenges, or leaves uncertain.')}${dialogueActionButtons('Save evidence response',state.evidenceStep===evidenceCatalog.length-1?'Continue to synthesis':'Next evidence source')}</div>`;
+}
+function dialogueActionButtons(label,nextLabel){return `<div class="dialogue-actions"><button class="secondary-btn" data-dialogue-back>← Back</button><button class="primary-btn" data-evidence-next>${nextLabel||label} →</button></div><div class="rubric-note"><b>Evidence response:</b> Your team is graded on what you noticed, how carefully you interpreted it, and whether your next question follows from the source.</div>`}
+function validateEvidenceResponse(){
+  const source=evidenceCatalog[state.evidenceStep];
+  const ids=[`evidenceLearned-${source.id}`,`evidenceHypothesis-${source.id}`];
+  const missing=ids.filter(id=>!String(document.querySelector(`#${id}`)?.value||'').trim());
+  document.querySelectorAll('.invalid').forEach(x=>x.classList.remove('invalid'));
+  missing.forEach(id=>document.querySelector(`#${id}`)?.classList.add('invalid'));
+  if(missing.length){showToast('Complete both evidence response fields before continuing.');document.querySelector(`#${missing[0]}`)?.focus();return false}
+  return true;
+}
+function backDialogue(){
+  saveFields();
+  if(state.phase===2&&state.evidenceStep>0){state.evidenceStep-=1;localStorage.setItem('it235-evidenceStep',String(state.evidenceStep));render();return}
+  if(state.phase>1){state.phase-=1;state.globalPhase=state.phase;state.evidenceStep=state.phase===2?evidenceCatalog.length-1:0;localStorage.setItem('it235-phase',String(state.phase));localStorage.setItem('it235-evidenceStep',String(state.evidenceStep));render()}
+}
+screens[2]=evidenceScreen;
 const priorDialogueRender=render;
 render=function(){
   if(state.completed){renderReport();return}
   priorDialogueRender();
   document.querySelector('.manual-advance-row')?.remove();
+  document.querySelector('.dialogue-toolbar')?.remove();
+  if(state.started){content.insertAdjacentHTML('afterbegin',`<div class="dialogue-toolbar"><span class="helper">${state.phase===2?`Evidence source ${state.evidenceStep+1} of ${evidenceCatalog.length}`:`Stage ${state.phase} of ${phases.length}`}</span>${state.phase>1||state.evidenceStep>0?'<button class="secondary-btn" data-dialogue-back>← Back</button>':''}</div>`)}
 };
 submitPhase=function(){
   if(!state.started){showToast('Register your team first.');return}
@@ -204,6 +236,17 @@ submitPhase=function(){
   render();
 };
 document.addEventListener('click',e=>{
+  if(e.target.closest('[data-dialogue-back]')){e.preventDefault();e.stopImmediatePropagation();backDialogue();return}
+  if(!e.target.closest('[data-evidence-next]'))return;
+  e.preventDefault();e.stopImmediatePropagation();
+  saveFields();
+  if(!validateEvidenceResponse())return;
+  if(state.evidenceStep<evidenceCatalog.length-1){state.evidenceStep+=1;localStorage.setItem('it235-evidenceStep',String(state.evidenceStep));showToast(`Next evidence source: ${evidenceCatalog[state.evidenceStep].title}`);render();return}
+  state.phase=3;state.globalPhase=3;state.evidenceStep=0;
+  localStorage.setItem('it235-phase','3');localStorage.setItem('it235-evidenceStep','0');
+  showToast('Evidence review complete. Continue to synthesis.');render();
+},true);
+document.addEventListener('click',e=>{
   if(e.target.closest('[data-download-report]')){
     e.preventDefault();
     const blob=new Blob([reportText()],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`IT235-${state.team.replace(/[^a-z0-9]+/gi,'-')||'team'}-report.txt`;a.click();setTimeout(()=>URL.revokeObjectURL(url),500);showToast('Report downloaded.');
@@ -212,6 +255,6 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-copy-report]')){e.preventDefault();navigator.clipboard?.writeText(reportText()).then(()=>showToast('Report copied to the clipboard.'))}
 },true);
 document.addEventListener('click',e=>{
-  if(e.target.closest('#resetBtn'))localStorage.removeItem('it235-completed');
+  if(e.target.closest('#resetBtn')){localStorage.removeItem('it235-completed');localStorage.removeItem('it235-evidenceStep');}
 },true);
 render();
