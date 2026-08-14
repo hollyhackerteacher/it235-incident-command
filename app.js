@@ -150,3 +150,68 @@ document.addEventListener('click',e=>{
   e.stopImmediatePropagation();
 },true);
 render();
+
+// Final student-only dialogue flow. Each completed prompt advances directly
+// to the next prompt; the final prompt becomes a portable grading report.
+state.completed=localStorage.getItem('it235-completed')==='1';
+const dialogueFields={
+  1:[['briefQuestions','First questions']],
+  2:[['requestEvidence','Requested source'],['requestQuestion','Question behind the request'],['requestReason','Why this evidence matters'],['investigationDecision','Working hypothesis']],
+  3:[['reviewSupport','Evidence supporting the hypothesis'],['reviewChange','Evidence that would change the team’s mind']],
+  4:[['developmentUpdate','Updated thinking'],['nextAction','Next action'],['actionRisk','Risk and safeguard']],
+  5:[['verificationChecks','Recovery checks'],['remainingRisk','Remaining risk'],['changeMindAgain','Result that would change the mind']],
+  6:[['leadershipUpdate','Leadership update'],['confidence','Confidence and rationale']],
+  7:[['afterAction','What the team did well'],['assumption','Assumption to challenge'],['prevention','Recommended improvement']]
+};
+const dialogueReportLabels={boardKnown:'Known facts',boardThink:'Current thinking',boardUnknown:'Unknowns',boardRuledOut:'Ruled out'};
+function reportValue(value){return String(value||'').trim()||'Not provided'}
+function reportText(){
+  const lines=[`IT235 INCIDENT COMMAND — TEAM REPORT`,`Team: ${state.team}`,`Members: ${state.members}`,`Completed: ${new Date().toLocaleString()}`,``,'INCIDENT BOARD'];
+  Object.entries(dialogueReportLabels).forEach(([id,label])=>lines.push(`${label}: ${reportValue(id==='boardKnown'?state.board.known:id==='boardThink'?state.board.think:id==='boardUnknown'?state.board.unknown:state.board.ruledOut)}`));
+  for(let p=1;p<=7;p++){
+    lines.push('',`STAGE ${p}: ${phases[p-1]}`);
+    (dialogueFields[p]||[]).forEach(([id,label])=>lines.push(`${label}: ${reportValue(state.answers[id])}`));
+  }
+  return lines.join('\n');
+}
+function reportHtml(){
+  const board=Object.entries(dialogueReportLabels).map(([id,label])=>`<div><b>${label}</b><p>${escapeHtml(reportValue(id==='boardKnown'?state.board.known:id==='boardThink'?state.board.think:id==='boardUnknown'?state.board.unknown:state.board.ruledOut))}</p></div>`).join('');
+  const stages=Array.from({length:7},(_,i)=>{const p=i+1;const fields=(dialogueFields[p]||[]).map(([id,label])=>`<div><b>${escapeHtml(label)}</b><p>${escapeHtml(reportValue(state.answers[id]))}</p></div>`).join('');return `<section class="report-stage"><span class="phase-kicker">Stage ${String(p).padStart(2,'0')} · ${phases[i]}</span>${fields}</section>`}).join('');
+  return `<div class="completion-report"><div class="report-header"><div><div class="phase-kicker">Simulation complete</div><h2>Team response report</h2><p class="subhead">Review this report with your team, then download or print it for submission.</p></div><div class="report-actions"><button class="primary-btn" data-download-report>Download report</button><button class="secondary-btn" data-print-report>Print report</button><button class="secondary-btn" data-copy-report>Copy report</button></div></div><div class="report-meta"><span><b>Team</b>${escapeHtml(state.team)}</span><span><b>Members</b>${escapeHtml(state.members)}</span><span><b>Status</b>Ready to submit</span></div><section class="report-board"><h3>Incident board</h3><div class="report-board-grid">${board}</div></section>${stages}<p class="helper report-footer">Submit the downloaded or printed report according to your instructor’s directions.</p></div>`;
+}
+function escapeHtml(value){return String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function renderReport(){document.body.classList.add('screen-mode');content.innerHTML=reportHtml();content.classList.remove('screen-enter');requestAnimationFrame(()=>content.classList.add('screen-enter'))}
+const priorDialogueRender=render;
+render=function(){
+  if(state.completed){renderReport();return}
+  priorDialogueRender();
+  document.querySelector('.manual-advance-row')?.remove();
+};
+submitPhase=function(){
+  if(!state.started){showToast('Register your team first.');return}
+  saveFields();
+  if(!validateSubmission())return;
+  const p=state.phase;
+  const answers={...state.answers,board:state.board};
+  post({action:'submit',teamId:state.teamId,teamName:state.team,phase:p,kind:phases[p-1],answer:JSON.stringify(answers),points:0});
+  state.waitingPhase=0;
+  localStorage.removeItem('it235-waitingPhase');
+  if(p>=7){state.completed=true;localStorage.setItem('it235-completed','1');showToast('Dialogue complete. Your report is ready.');render();return}
+  state.phase=p+1;state.globalPhase=state.phase;
+  localStorage.setItem('it235-phase',String(state.phase));
+  localStorage.removeItem('it235-phaseStartedAt');
+  showToast(`Next dialogue: ${phases[state.phase-1]}`);
+  render();
+};
+document.addEventListener('click',e=>{
+  if(e.target.closest('[data-download-report]')){
+    e.preventDefault();
+    const blob=new Blob([reportText()],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`IT235-${state.team.replace(/[^a-z0-9]+/gi,'-')||'team'}-report.txt`;a.click();setTimeout(()=>URL.revokeObjectURL(url),500);showToast('Report downloaded.');
+  }
+  if(e.target.closest('[data-print-report]')){e.preventDefault();window.print()}
+  if(e.target.closest('[data-copy-report]')){e.preventDefault();navigator.clipboard?.writeText(reportText()).then(()=>showToast('Report copied to the clipboard.'))}
+},true);
+document.addEventListener('click',e=>{
+  if(e.target.closest('#resetBtn'))localStorage.removeItem('it235-completed');
+},true);
+render();
