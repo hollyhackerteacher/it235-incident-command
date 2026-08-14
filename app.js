@@ -1,5 +1,7 @@
 const BACKEND_URL='/api';
-const facilitatorMode=new URLSearchParams(location.search).get('mode')==='facilitator';
+// The activity now runs as a self-directed classroom game. Keep old
+// facilitator bookmarks harmless, but never switch into the dashboard.
+const facilitatorMode=false;
 const summaryMode=facilitatorMode&&new URLSearchParams(location.search).get('view')==='summary';
 const phases=['Briefing','Investigation','Class review','New development','Verification','Leadership update','After-action review'];
 const requestCatalog=[['user-interview','User interview','What did an affected person experience, and what still works?'],['service-desk','Service desk tickets','How broad is the reported impact across people or departments?'],['monitoring','Monitoring information','Which services are healthy, degraded, or showing a timing change?'],['recent-change','Recent change record','What changed near the start of the incident, and what was actually verified?'],['logs','Application and gateway logs','What behavior is repeated, and which hypothesis does it support or challenge?'],['verification','Recovery verification results','Did the proposed recovery work for representative users and tasks?']];
@@ -104,3 +106,47 @@ document.addEventListener('click',e=>{
     setTimeout(sync,200);
   }).catch(()=>showToast('The server did not confirm the phase release.'));
 },true);
+
+// Manual classroom mode: every active team screen can move forward locally.
+// This does not call the API, so advancing never reloads the page.
+waitingScreen=function(){return `${progress(state.phase)}<div class="waiting-state"><div class="waiting-orbit"><i></i><i></i><i></i></div><div class="phase-kicker">Response saved · Screen ${String(state.phase).padStart(2,'0')}</div><h2>Pause and discuss</h2><p class="subhead">Compare your response with the class discussion. Revise it if needed, then use the manual advance button below when your team is ready for the next development.</p><div class="waiting-status"><span class="status-pill">READY TO CONTINUE</span><b>${phases[state.phase-1]}</b></div><button class="secondary-btn" data-edit-response>Edit current response</button>${scoringGuide()}</div>`};
+function manualAdvance(){
+  if(!state.started){showToast('Register your team before advancing.');return}
+  if(state.phase>=7){showToast('This is the final stage.');return}
+  saveFields();
+  state.phase+=1;
+  state.globalPhase=state.phase;
+  state.waitingPhase=0;
+  localStorage.removeItem('it235-waitingPhase');
+  localStorage.removeItem('it235-testFloor');
+  localStorage.removeItem('it235-phaseStartedAt');
+  localStorage.setItem('it235-phase',String(state.phase));
+  showToast(`Advanced to: ${phases[state.phase-1]}`);
+  render();
+}
+
+// Bypass the retired pre-start instructor lobby and add the same control to
+// every student-facing screen after the normal render completes.
+const studentRender=normalStudentRender;
+render=function(){
+  studentRender();
+  const old=document.querySelector('[data-manual-advance]');
+  old?.closest('.manual-advance-row')?.remove();
+  if(state.started){
+    content.insertAdjacentHTML('beforeend',`<div class="manual-advance-row"><button class="primary-btn" data-manual-advance>${state.phase>=7?'Final stage':'Manual advance to next stage'}</button><span class="helper">Move the class forward when your team is ready.</span></div>`);
+  }
+};
+document.addEventListener('click',e=>{
+  const button=e.target.closest('[data-manual-advance]');
+  if(!button)return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  manualAdvance();
+},true);
+// Disable the retired hidden-logo test control.
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.waiting-orbit'))return;
+  localStorage.removeItem('it235-testFloor');
+  e.stopImmediatePropagation();
+},true);
+render();
