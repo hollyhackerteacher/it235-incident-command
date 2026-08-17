@@ -176,6 +176,7 @@ function individualizeUI(){
   const start=document.querySelector('#startBtn');if(start)start.textContent='Begin assignment';
   const saved=document.querySelector('#teamSaved');if(saved&&saved.textContent==='Team registered')saved.textContent='Assignment registered';
   const scoreSpans=document.querySelectorAll('.score-preview div:first-child span');if(scoreSpans[0])scoreSpans[0].textContent='Your score';
+  const scorePreview=document.querySelector('.score-preview');if(scorePreview)scorePreview.style.display='none';
   const meta=document.querySelectorAll('.hero-meta span');if(meta[1])meta[1].textContent='◉ Individual assignment';
   const reportTeam=document.querySelector('[for="report-team"]');const reportMembers=document.querySelector('[for="report-members"]');
   if(reportTeam)reportTeam.textContent='Student name';if(reportMembers)reportMembers.textContent='Assignment type';
@@ -184,6 +185,41 @@ function individualizeUI(){
 }
 const individualRender=render;
 render=function(){individualRender();individualizeUI()};
+render();
+
+// Final grading additions: explicit diagnosis, student metadata, and a
+// self-check before the student exports the report.
+const finalSubmissionFields=[
+  ['finalCause','What do you believe the main issue was?','State your diagnosis clearly, even if it remains provisional.'],
+  ['finalEvidence','Which evidence most strongly supports that conclusion?','Name the specific clues that mattered most.'],
+  ['finalFirstAction','What would you do first in a real incident?','Describe a controlled action or test.'],
+  ['finalVerification','How would you verify the business problem is resolved?','Include a technical check and a user/customer task.'],
+  ['finalReflection','What would you ask or investigate sooner next time?','Identify one improvement to your reasoning process.']
+];
+const selfChecks=['I separated observations from assumptions.','I explained how evidence changed my thinking.','I stated a clear diagnosis and first action.','I included a meaningful verification plan.'];
+function finalSubmissionHtml(){
+  const board=Object.entries(dialogueReportLabels).map(([id,label])=>reportInput(label,id,id==='boardKnown'?state.board.known:id==='boardThink'?state.board.think:id==='boardUnknown'?state.board.unknown:state.board.ruledOut)).join('');
+  const stages=Array.from({length:7},(_,i)=>{const p=i+1;const fields=(dialogueFields[p]||[]).map(([id,label])=>reportInput(label,id,state.answers[id])).join('');return `<section class="report-stage"><span class="phase-kicker">Stage ${String(p).padStart(2,'0')} · ${phases[i]}</span>${fields||'<p class="helper">No written response was required in this stage.</p>'}</section>`}).join('');
+  const finalFields=finalSubmissionFields.map(([id,label,placeholder])=>reportInput(label,id,state.answers[id]||'').replace('</textarea>',`</textarea><span class="helper report-prompt">${escapeHtml(placeholder)}</span>`)).join('');
+  const checks=selfChecks.map((label,i)=>`<label class="self-check"><input type="checkbox" data-self-check="${i}"> <span>${escapeHtml(label)}</span></label>`).join('');
+  return `<div class="completion-report"><div class="report-header"><div><div class="phase-kicker">Final submission form</div><h2>Review your individual report</h2><p class="subhead">Make final edits, complete your diagnosis, check your work, then choose Export PDF for Canvas.</p></div><div class="report-actions"><button class="primary-btn" data-save-report>Save edits</button><button class="primary-btn" data-export-pdf>Export PDF</button><button class="secondary-btn" data-copy-report>Copy report</button></div></div><div class="report-meta"><div><label for="report-team">Student name</label><input id="report-team" data-report-meta="team" value="${escapeHtml(state.team)}"></div><div><label for="report-course">Course / section</label><input id="report-course" data-report-answer="courseSection" placeholder="Example: IT235-001" value="${escapeHtml(state.answers.courseSection||'')}"></div><div><label for="report-date">Submission date</label><input id="report-date" data-report-answer="submissionDate" type="date" value="${escapeHtml(state.answers.submissionDate||new Date().toISOString().slice(0,10))}"></div></div><section class="report-board"><h3>Incident board</h3><div class="report-board-grid">${board}</div></section>${stages}<section class="final-diagnosis"><div class="phase-kicker">Final conclusion</div><h3>State what you believe now</h3>${finalFields}</section><section class="self-check-panel"><div class="phase-kicker">Before exporting</div><h3>Self-check</h3><p class="helper">Confirm each statement before submitting this report.</p>${checks}</section><p class="helper report-status">Edits are ready to save. PDF tip: choose “Save as PDF” in the print window.</p></div>`;
+}
+editableReportHtml=finalSubmissionHtml;
+const previousSaveReportEdits=saveReportEdits;
+saveReportEdits=function(){
+  previousSaveReportEdits();
+  const checks=[...document.querySelectorAll('[data-self-check]')].map(x=>x.checked);
+  localStorage.setItem('it235-selfCheck',JSON.stringify(checks));
+  const status=document.querySelector('.report-status');if(status)status.textContent='Edits saved — review complete and ready to export.';
+};
+const previousIndividualizeUI=individualizeUI;
+individualizeUI=function(){previousIndividualizeUI();const saved=JSON.parse(localStorage.getItem('it235-selfCheck')||'[]');document.querySelectorAll('[data-self-check]').forEach((x,i)=>x.checked=Boolean(saved[i]))};
+const previousReportText=reportText;
+reportText=function(){
+  const base=previousReportText();
+  const final=finalSubmissionFields.map(([id,label])=>`${label}: ${reportValue(state.answers[id])}`).join('\n');
+  return `${base}\n\nFINAL CONCLUSION\n${final}\n\nSELF-CHECK COMPLETED: ${JSON.parse(localStorage.getItem('it235-selfCheck')||'[]').filter(Boolean).length}/${selfChecks.length}`;
+};
 render();
 
 // Editable final submission form. Students can revise the generated report
@@ -225,7 +261,7 @@ document.addEventListener('input',e=>{
 },true);
 document.addEventListener('click',e=>{
   if(e.target.closest('[data-save-report]')){e.preventDefault();saveReportEdits();showToast('Report edits saved.');return}
-  if(e.target.closest('[data-export-pdf]')){e.preventDefault();saveReportEdits();showToast('Choose “Save as PDF” in the print window.');window.print();return}
+  if(e.target.closest('[data-export-pdf]')){e.preventDefault();if(![...document.querySelectorAll('[data-self-check]')].every(x=>x.checked)){showToast('Complete the self-check before exporting.');return}saveReportEdits();showToast('Choose “Save as PDF” in the print window.');window.print();return}
 },true);
 render();
 
