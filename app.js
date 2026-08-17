@@ -151,6 +151,41 @@ document.addEventListener('click',e=>{
 },true);
 render();
 
+// Individual-assignment presentation layer. Keep the existing storage/API
+// field names for compatibility, but expose only individual-student language.
+function startIndividualAssignment(){
+  if(state.started){showToast('This assignment is already registered.');return}
+  state.team=document.querySelector('#teamName').value.trim();
+  if(!state.team){showToast('Enter your name before beginning.');return}
+  state.members='Individual submission';
+  state.teamId=crypto.randomUUID?crypto.randomUUID():String(Date.now());
+  state.started=true;state.startedAt=Date.now();
+  ['team','members','teamId','started','startedAt'].forEach(k=>localStorage.setItem('it235-'+k,state[k]));
+  post({action:'registerTeam',teamId:state.teamId,teamName:state.team,members:state.members});
+  showToast('Assignment started. The briefing is ready.');render();
+}
+startGame=startIndividualAssignment;
+function individualizeUI(){
+  state.members='Individual submission';
+  localStorage.setItem('it235-members',state.members);
+  const heroCopy=document.querySelector('.hero-copy');if(heroCopy&&heroCopy.textContent.includes('incident response team'))heroCopy.textContent='You are investigating a service incident. The information is incomplete, and your job is to ask better questions before making a change.';
+  const nameLabel=document.querySelector('label[for="teamName"]');if(nameLabel)nameLabel.textContent='Your name';
+  const nameInput=document.querySelector('#teamName');if(nameInput)nameInput.placeholder='Enter your name';
+  const memberLabel=document.querySelector('label[for="teamMembers"]');const memberInput=document.querySelector('#teamMembers');
+  if(memberLabel)memberLabel.style.display='none';if(memberInput)memberInput.style.display='none';
+  const start=document.querySelector('#startBtn');if(start)start.textContent='Begin assignment';
+  const saved=document.querySelector('#teamSaved');if(saved&&saved.textContent==='Team registered')saved.textContent='Assignment registered';
+  const scoreSpans=document.querySelectorAll('.score-preview div:first-child span');if(scoreSpans[0])scoreSpans[0].textContent='Your score';
+  const meta=document.querySelectorAll('.hero-meta span');if(meta[1])meta[1].textContent='◉ Individual assignment';
+  const reportTeam=document.querySelector('[for="report-team"]');const reportMembers=document.querySelector('[for="report-members"]');
+  if(reportTeam)reportTeam.textContent='Student name';if(reportMembers)reportMembers.textContent='Assignment type';
+  const reportStatus=document.querySelector('.report-status');if(reportStatus)reportStatus.textContent='Ready to submit individually';
+  document.querySelectorAll('#content *').forEach(el=>{if(el.children.length)return;const text=el.textContent;if(!text)return;el.textContent=text.replace(/your team/gi,'your response').replace(/the team’s/gi,'your').replace(/the team's/gi,'your').replace(/the team/gi,'you').replace(/team’s/gi,'your').replace(/team's/gi,'your').replace(/team note/gi,'individual note').replace(/team score/gi,'your score').replace(/team registered/gi,'assignment registered')});
+}
+const individualRender=render;
+render=function(){individualRender();individualizeUI()};
+render();
+
 // Editable final submission form. Students can revise the generated report
 // without returning through every dialogue screen, then export it as a PDF.
 function reportInput(label,id,value){return `<div class="report-edit-field"><label for="report-${id}">${escapeHtml(label)}</label><textarea id="report-${id}" data-report-answer="${escapeHtml(id)}">${escapeHtml(value||'')}</textarea></div>`}
@@ -218,7 +253,7 @@ dialogueFields[2]=evidenceCatalog.map(source=>[`evidenceNote-${source.id}`,`${so
 const dialogueReportLabels={boardKnown:'Known facts',boardThink:'Current thinking',boardUnknown:'Unknowns',boardRuledOut:'Ruled out'};
 function reportValue(value){return String(value||'').trim()||'Not provided'}
 function reportText(){
-  const lines=[`IT235 INCIDENT COMMAND — TEAM REPORT`,`Team: ${state.team}`,`Members: ${state.members}`,`Completed: ${new Date().toLocaleString()}`,``,'INCIDENT BOARD'];
+  const lines=[`IT235 INCIDENT COMMAND — INDIVIDUAL REPORT`,`Student: ${state.team}`,`Assignment: Individual incident response`,`Completed: ${new Date().toLocaleString()}`,``,'INCIDENT BOARD'];
   Object.entries(dialogueReportLabels).forEach(([id,label])=>lines.push(`${label}: ${reportValue(id==='boardKnown'?state.board.known:id==='boardThink'?state.board.think:id==='boardUnknown'?state.board.unknown:state.board.ruledOut)}`));
   for(let p=1;p<=7;p++){
     lines.push('',`STAGE ${p}: ${phases[p-1]}`);

@@ -9,13 +9,13 @@ An online, platform-agnostic troubleshooting simulation for a 60-minute classroo
 The current version is a self-hosted classroom game with a small VPS backend. It includes:
 
 - Four incident phases: triage, evidence, response, and debrief
-- Team name and answer persistence in the browser
-- Shared team registration and submissions through the VPS backend
+- Individual student name and answer persistence in the browser
+- Individual submissions through the VPS backend
 - Guided dialogue prompts that advance after each completed response
 - Evidence is presented as five separate source screens, each with a learning/hypothesis response
-- A running incident notebook keeps earlier clues and team notes visible
-- Back navigation allows teams to revisit earlier dialogue and evidence
-- A final team report that can be downloaded, printed, or copied for grading
+- A running incident notebook keeps earlier clues and individual notes visible
+- Back navigation allows students to revisit earlier dialogue and evidence
+- A final individual report that can be downloaded, printed, or copied for grading
 - Evidence selection, hypothesis writing, response planning, verification, and incident reporting
 - A 100-point process rubric: 15 + 25 + 25 + 35
 - Responsive layout for projector, laptop, and student devices
@@ -24,9 +24,9 @@ The current version is a self-hosted classroom game with a small VPS backend. It
 
 Live game: https://incident.fireboltservices.com/
 
-1. Open the game URL for student teams.
-2. Have teams submit their names and members.
-3. Teams respond to each dialogue prompt and submit it to continue to the next prompt.
-4. At the end, teams download, print, or copy the completed report for submission.
+1. Open the game URL for students.
+2. Each student enters their name and begins the assignment.
+3. Students respond to each dialogue prompt and submit it to continue to the next prompt.
+4. At the end, each student downloads, prints, or copies the completed report for submission.
 
-The VPS stores teams and submissions in a private SQLite database. The game uses same-origin API requests, so no Google account or spreadsheet access is required.
+The VPS stores individual student submissions in a private SQLite database. The game uses same-origin API requests, so no Google account or spreadsheet access is required.
