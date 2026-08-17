@@ -151,6 +151,49 @@ document.addEventListener('click',e=>{
 },true);
 render();
 
+// Editable final submission form. Students can revise the generated report
+// without returning through every dialogue screen, then export it as a PDF.
+function reportInput(label,id,value){return `<div class="report-edit-field"><label for="report-${id}">${escapeHtml(label)}</label><textarea id="report-${id}" data-report-answer="${escapeHtml(id)}">${escapeHtml(value||'')}</textarea></div>`}
+function editableReportHtml(){
+  const board=Object.entries(dialogueReportLabels).map(([id,label])=>reportInput(label,id,id==='boardKnown'?state.board.known:id==='boardThink'?state.board.think:id==='boardUnknown'?state.board.unknown:state.board.ruledOut)).join('');
+  const stages=Array.from({length:7},(_,i)=>{const p=i+1;const fields=(dialogueFields[p]||[]).map(([id,label])=>reportInput(label,id,state.answers[id])).join('');return `<section class="report-stage"><span class="phase-kicker">Stage ${String(p).padStart(2,'0')} · ${phases[i]}</span>${fields||'<p class="helper">No written response was required in this stage.</p>'}</section>`}).join('');
+  return `<div class="completion-report"><div class="report-header"><div><div class="phase-kicker">Final submission form</div><h2>Review your team report</h2><p class="subhead">Make any final edits, save the report, then choose Export PDF for your Canvas submission.</p></div><div class="report-actions"><button class="primary-btn" data-save-report>Save edits</button><button class="primary-btn" data-export-pdf>Export PDF</button><button class="secondary-btn" data-copy-report>Copy report</button></div></div><div class="report-meta"><div><label for="report-team">Team</label><input id="report-team" data-report-meta="team" value="${escapeHtml(state.team)}"></div><div><label for="report-members">Members</label><input id="report-members" data-report-meta="members" value="${escapeHtml(state.members)}"></div><div><label>Status</label><span class="report-status">Ready to submit</span></div></div><section class="report-board"><h3>Incident board</h3><div class="report-board-grid">${board}</div></section>${stages}<p class="helper report-footer">PDF tip: in the print window, choose “Save as PDF” as the destination.</p></div>`;
+}
+function saveReportEdits(){
+  document.querySelectorAll('[data-report-answer]').forEach(el=>{
+    const id=el.dataset.reportAnswer;
+    if(id==='boardKnown')state.board.known=el.value;
+    else if(id==='boardThink')state.board.think=el.value;
+    else if(id==='boardUnknown')state.board.unknown=el.value;
+    else if(id==='boardRuledOut')state.board.ruledOut=el.value;
+    else state.answers[id]=el.value;
+  });
+  const team=document.querySelector('[data-report-meta="team"]');
+  const members=document.querySelector('[data-report-meta="members"]');
+  if(team)state.team=team.value.trim();
+  if(members)state.members=members.value.trim();
+  localStorage.setItem('it235-team',state.team);localStorage.setItem('it235-members',state.members);
+  localStorage.setItem('it235-answers',JSON.stringify(state.answers));localStorage.setItem('it235-board',JSON.stringify(state.board));
+  if(state.teamId)post({action:'updateBoard',teamId:state.teamId,...state.board});
+}
+reportHtml=editableReportHtml;
+document.addEventListener('input',e=>{
+  if(!e.target.matches('[data-report-answer],[data-report-meta]'))return;
+  const id=e.target.dataset.reportAnswer;
+  if(id==='boardKnown')state.board.known=e.target.value;
+  else if(id==='boardThink')state.board.think=e.target.value;
+  else if(id==='boardUnknown')state.board.unknown=e.target.value;
+  else if(id==='boardRuledOut')state.board.ruledOut=e.target.value;
+  else if(id)state.answers[id]=e.target.value;
+  if(e.target.dataset.reportMeta==='team')state.team=e.target.value;
+  if(e.target.dataset.reportMeta==='members')state.members=e.target.value;
+},true);
+document.addEventListener('click',e=>{
+  if(e.target.closest('[data-save-report]')){e.preventDefault();saveReportEdits();showToast('Report edits saved.');return}
+  if(e.target.closest('[data-export-pdf]')){e.preventDefault();saveReportEdits();showToast('Choose “Save as PDF” in the print window.');window.print();return}
+},true);
+render();
+
 // Final student-only dialogue flow. Each completed prompt advances directly
 // to the next prompt; the final prompt becomes a portable grading report.
 state.completed=localStorage.getItem('it235-completed')==='1';
